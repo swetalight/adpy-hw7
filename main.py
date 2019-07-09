@@ -31,45 +31,41 @@ def get_fio(text):
 
 def get_phone(text):
     if text != '':
-        res = re.findall('[+]?\d+', text)
-        phone_buf = ''.join(res)
-        if phone_buf.startswith('8'):
-            phone_buf = '+7' + phone_buf[1:]
-        if len(phone_buf) < 12:
-            phone_buf = '+7' + phone_buf
-        phone = ''.join([
-            phone_buf[:2], '(', phone_buf[2:5], ')', phone_buf[5:8],
-            '-', phone_buf[8:10], '-', phone_buf[10:12]
-        ])
-        if len(phone_buf) > 12:
-            return ' '.join([phone, 'доб', phone_buf[12:len(phone_buf)]])
-        return phone
-    return ''
+        res_text = re.sub('[^\d]', '', text)
+        res = re.findall("^\d{11}$", res_text)
+        if res:
+            res = res[0]
+            return '+7({}){}-{}-{}'.format(res[1:4], res[4:7], res[7:9], res[9:11])
+        else:
+            res = re.findall("^\d{15}$", res_text)
+            res = res[0]
+            return '+7({}){}-{}-{} доб {}'.format(res[1:4], res[4:7], res[7:9], res[9:11], res[11:15])
 
 
 if __name__ == '__main__':
     base_path = os.path.basename('.')
     path_to_data = os.path.join(base_path, 'data.csv')
-    phone_data = read_csv_data(path_to_file=path_to_data)
+    phone_data = read_csv_data(path_to_file=path_to_data)[1:]
 
     new_phone_data = {}
 
-    for i, row in enumerate(phone_data):
-        if i > 0:
-            fio_row_str = ' '.join(row[0:3])
-            fio = get_fio(fio_row_str)
-            lastname = fio[0]
-            dict_item = {
-                'ФИО': fio, 'Организация': row[3], 'Должность': row[4],
-                'Телефон': get_phone(row[5]), 'Email': row[len(row)-1]
-            }
-            if not lastname in new_phone_data:
-                new_phone_data[lastname] = dict_item
-            else:
-                for key, new_val in dict_item.items():
-                    old_val = new_phone_data[lastname][key]
-                    if len(old_val) < len(new_val):
-                        new_phone_data[lastname][key] = new_val
+    for row in phone_data:
+
+        fio_row_str = ' '.join(row[0:3])
+        fio = get_fio(fio_row_str)
+        lastname = fio[0]
+
+        dict_item = {
+            'ФИО': fio, 'Организация': row[3], 'Должность': row[4],
+            'Телефон': get_phone(row[5]), 'Email': row[len(row)-1]
+        }
+        if not lastname in new_phone_data:
+            new_phone_data[lastname] = dict_item
+        else:
+            for key, new_val in dict_item.items():
+                old_val = new_phone_data[lastname][key]
+                if len(str(old_val)) < len(str(new_val)):
+                    new_phone_data[lastname][key] = new_val
 
     new_phone_data_list = list(new_phone_data.values())
     save_new_csv_data(
